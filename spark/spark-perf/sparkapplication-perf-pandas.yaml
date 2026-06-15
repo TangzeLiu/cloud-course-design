@@ -1,0 +1,30 @@
+apiVersion: sparkoperator.k8s.io/v1beta2
+kind: SparkApplication
+metadata:
+  name: perf-pandas
+  namespace: default
+spec:
+  type: Python
+  pythonVersion: "3"
+  mode: cluster
+  image: swr.cn-north-4.myhuaweicloud.com/cloud-course-2023116336/pyspark-perf:v1
+  imagePullPolicy: Always
+  mainApplicationFile: local:///opt/spark/work/perf_compare.py
+  arguments:
+    - "pandas"
+  sparkVersion: "3.4.0"
+  sparkConf:
+    spark.executor.memoryOverhead: "128m"
+    spark.driver.memoryOverhead: "128m"
+  restartPolicy:
+    type: Never
+  driver:
+    cores: 1
+    coreRequest: "100m"
+    memory: "768m"
+    serviceAccount: spark
+  executor:
+    cores: 1
+    coreRequest: "50m"
+    instances: 1
+    memory: "512m"

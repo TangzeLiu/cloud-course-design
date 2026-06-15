@@ -1,0 +1,22 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Cloud Course Design</title>
+</head>
+<body>
+  <h1>云计算课程设计</h1>
+  <p>学号：2023116336</p>
+  <p>姓名：刘唐泽</p>
+  <button onclick="ping()">测试后端 API</button>
+  <pre id="result"></pre>
+
+  <script>
+    async function ping() {
+      const res = await fetch('/api/ping');
+      const data = await res.json();
+      document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+    }
+  </script>
+</body>
+</html>
