@@ -1,0 +1,66 @@
+name: Build and Deploy Backend to CCE
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - "k8s/backend-deployment.yaml"
+      - ".github/workflows/deploy-backend.yml"
+
+env:
+  IMAGE_NAME: backend
+  DEPLOYMENT_NAME: backend
+  CONTAINER_NAME: backend
+  NAMESPACE: default
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set image tag
+        id: vars
+        run: |
+          SHORT_SHA=${GITHUB_SHA::7}
+          echo "tag=ci-${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "image=${{ secrets.SWR_REGISTRY }}/${{ secrets.SWR_ORG }}/${IMAGE_NAME}:ci-${SHORT_SHA}" >> $GITHUB_OUTPUT
+
+      - name: Login to Huawei Cloud SWR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.SWR_REGISTRY }}
+          username: ${{ secrets.SWR_USERNAME }}
+          password: ${{ secrets.SWR_PASSWORD }}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ steps.vars.outputs.image }}
+          provenance: false
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Verify cluster access
+        run: |
+          kubectl get nodes
+
+      - name: Deploy backend image to CCE
+        run: |
+          kubectl set image deployment/${DEPLOYMENT_NAME} ${CONTAINER_NAME}=${{ steps.vars.outputs.image }} -n ${NAMESPACE}
+          kubectl rollout status deployment/${DEPLOYMENT_NAME} -n ${NAMESPACE} --timeout=180s
+
+      - name: Show deployment image
+        run: |
+          kubectl get deployment ${DEPLOYMENT_NAME} -n ${NAMESPACE} -o wide
